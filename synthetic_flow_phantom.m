@@ -251,7 +251,8 @@ AFF = M*T*P*R*S*Pminus;     % rotation around arbitrary point P (ie: centre of s
 Gro = 9.95;
 Gpe = 0;
 Gsl = -10.98;
-Gscn = [Gro, Gpe, Gsl] .* (1e-3)^2; %msec^2.mT/m --- First Moment scaling into correct units
+Gscn = [Gro, Gpe, Gsl]; % no First Moment scaling (values as in scanner GVE)
+% Gscn = [Gro, Gpe, Gsl] .* (1e-3)^2; %msec^2.mT/m --- First Moment scaling into correct units
 % G = Gscn;
 
 % transform from xyz to scanner coordinates
@@ -492,7 +493,7 @@ disp('DONE ...');
 disp(['Saving gradient moments as ... ' fileName(1:end-7) '_grad_moments.txt']);
 
 fileID = fopen([saveDataDir fileName(1:end-7) '_grad_moments.txt'],'w');
-fprintf(fileID,'%.9f\t',G(:));
+fprintf(fileID,'%.4f\t',G(:));
 fclose(fileID);
 
 disp('DONE ...');

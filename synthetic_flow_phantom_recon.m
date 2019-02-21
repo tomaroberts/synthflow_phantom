@@ -41,7 +41,7 @@ P.stack5 = STACKS(:,:,:,5); P.stack5 = P.stack5(:);
 
 gamma = 42577; %Hz/mT
 % gamma = 2 .* pi .* 42577; %Hz/mT
-% Mscaling = (1e-3).^2;  %ms^2.mT/m --- First Moment scaling into correct units
+Mscaling = (1e-3).^2;  %ms^2.mT/m --- First Moment scaling into correct units
 
 % Pmat = [P.stack1, P.stack2, P.stack3]';                     % orthogonal stacks only
 % G_world = G([1,2,3],:);
@@ -54,7 +54,7 @@ G_world = G; % NB: no need for Mscaling as grad_moments defined: .* (1e-3)^2; %m
 
 % Solve
 for ii = 1:length(Pmat)
-    Vworld_vec(:,ii) = gamma .* G_world\Pmat(:,ii); %X = A\B => Vxyz*Vxyz_vec = Pmat
+    Vworld_vec(:,ii) = gamma .* Mscaling .* G_world\Pmat(:,ii); %X = A\B => Vxyz*Vxyz_vec = Pmat
 end
 
 disp('Solved.');
