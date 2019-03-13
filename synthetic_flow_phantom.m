@@ -7,11 +7,11 @@ sp = 'C:\Users\tr17\Documents\Projects\PC_Fetal_CMR\Data\Synthetic_Flow_Phantom'
 cd(sp)
 
 % dataDir = pwd;
-saveDataDir = 'data_6pipes/';
+saveDataDir = 'QFlow_6pipes/data/';
 mkdir(saveDataDir);
 
 
-%% Construct phantom volume
+%% PHANTOM VOLUME PROPERTIES
 
 % volume in px
 PIX.x = 128; PIX.y = 128; PIX.z = 80;
@@ -34,8 +34,8 @@ PIPE4.vel = -100e-2;
 PIPE5.vel = -80e-2;
 PIPE6.vel = -25e-2;
 
-% Create pipes
-%% PIPE 1 - z-direction
+%% CREATE PIPES
+%%% PIPE 1 - z-direction
 PIPE1.xsize = round(0.5*PIX.x/10);
 PIPE1.ysize = round(0.5*PIX.y/10);
 PIPE1.xpos = round(PIX.x * 0);
@@ -48,7 +48,7 @@ gauss(outsidePipeIdx) = 0;
 
 Vz = repmat(gauss,1,1,PIX.z); %extend gauss to make a pipe!
 
-%% PIPE 2 - x-direction
+%%% PIPE 2 - x-direction
 PIPE2.xsize = round(0.5*PIX.x/12);
 PIPE2.ysize = round(0.5*PIX.y/12);
 PIPE2.xpos = round(PIX.x * -0.3);
@@ -62,7 +62,7 @@ gauss(:,81:end)=[];
 
 Vx = repmat(gauss,1,1,PIX.x); %extend gauss to make a pipe!
 
-%% PIPE 3 - y-direction
+%%% PIPE 3 - y-direction
 PIPE3.xsize = round(0.5*PIX.x/10);
 PIPE3.ysize = round(0.5*PIX.y/10);
 PIPE3.xpos = round(PIX.x * 0);
@@ -77,7 +77,7 @@ gauss(81:end,:)=[];
 Vy = repmat(gauss,1,1,PIX.y); %extend gauss to make a pipe!
 
 
-%% PIPE 4 - negative z-direction
+%%% PIPE 4 - negative z-direction
 PIPE4.xsize = round(0.5*PIX.x/10);
 PIPE4.ysize = round(0.5*PIX.y/10);
 PIPE4.xpos = round(PIX.x * 0);
@@ -90,7 +90,7 @@ gauss(outsidePipeIdx) = 0;
 
 Vz = Vz + repmat(gauss,1,1,PIX.z); %extend gauss to make a pipe!
 
-%% PIPE 5 - negative x-direction
+%%% PIPE 5 - negative x-direction
 PIPE5.xsize = round(0.5*PIX.x/12);
 PIPE5.ysize = round(0.5*PIX.y/12);
 PIPE5.xpos = round(PIX.x * -0.3);
@@ -105,7 +105,7 @@ gauss(:,81:end)=[];
 Vx = Vx + repmat(gauss,1,1,PIX.x); %extend gauss to make a pipe!
 Vx = permute(Vx,[1,3,2]);
 
-%% PIPE 6 - negative y-direction
+%%% PIPE 6 - negative y-direction
 PIPE6.xsize = round(0.5*PIX.x/10);
 PIPE6.ysize = round(0.5*PIX.y/10);
 PIPE6.xpos = round(PIX.x * 0);
@@ -123,18 +123,19 @@ Vy = permute(Vy,[3,2,1]);
 
 %% CREATE FLOW PHANTOM VELOCITY VOLUME
 V = Vz + Vx + Vy;
-implay_RR(V);
+% implay_RR(V);
 
-%% view flowing pipes
-% h = vol3d('cdata',V,'texture','3D');
-% view(3); 
-% % Update view since 'texture' = '2D'
-% vol3d(h);
-% set(gca,'CameraViewAngleMode','manual');
-% axis square;
-% xlabel('x-axis (AP)');
-% ylabel('y-axis (RL)');
-% zlabel('z-axis (FH)');
+
+%% VIEW PIPES (V)
+h = vol3d('cdata',abs(V),'texture','3D'); %abs purely for visualisation because of alphamap
+view(3); 
+% Update view since 'texture' = '2D'
+vol3d(h);
+set(gca,'CameraViewAngleMode','manual');
+axis square;
+xlabel('x-axis (AP)');
+ylabel('y-axis (RL)');
+zlabel('z-axis (FH)');
 
 
 %% SCANNER VOLUME
@@ -165,12 +166,12 @@ SCN.zCentre = SCN.h/2;
 % slice dimensions
 xl = PIX.x; % i
 yl = PIX.y; % j
-zl = 100;     % k (no. of slices)
+zl = 100;   % k (no. of slices)
 
 % rotation
 % NB: non-rotated slice is defined as transverse within scanner, i.e:
 % vector normal points in z-direction (FH)
-xTheta = 0;
+xTheta = 50;
 yTheta = 0;
 zTheta = 0;
 
@@ -184,10 +185,9 @@ tx_offset = 10;
 ty_offset = 5;
 tz_offset = 0;
 
-tx = tx_offset + SCN.xCentre - xcp + 1; % +1 seems correct to line-up with PHIpad (z-stack at least...)
+tx = tx_offset + SCN.xCentre - xcp + 1; % +1 seems correct to line-up with PHIpad
 ty = ty_offset + SCN.yCentre - ycp + 1;
 tz = tz_offset + SCN.zCentre - zcp + 1;
-% tz = manualtz + 280;
 
 % scaling (voxel size/slice thickness)
 sx = 1;
@@ -248,12 +248,22 @@ AFF = M*T*P*R*S*Pminus;     % rotation around arbitrary point P (ie: centre of s
 
 
 %% GRADIENT MOMENTS
+
+% bSSFP slice gradient moment definitions
 Gro = 9.95;
 Gpe = 0;
 Gsl = -10.98;
-Gscn = [Gro, Gpe, Gsl]; % no First Moment scaling (values as in scanner GVE)
+% Gscn = [Gro, Gpe, Gsl]; % no First Moment scaling (values as in scanner GVE)
+Gscn = [Gro, Gpe, Gsl] .* (1e-3)^2; %msec^2.mT/m --- First Moment scaling into correct units
+
+% % QFlow slice gradient moment definitions
+% warning('QFlow velocity encoding ...');
+% Gro = 0;
+% Gpe = 0;
+% Gsl = 5; % guessed at this - can be more precise using GVE, if needs be
+% % Gscn = [Gro, Gpe, Gsl]; % no First Moment scaling (values as in scanner GVE)
 % Gscn = [Gro, Gpe, Gsl] .* (1e-3)^2; %msec^2.mT/m --- First Moment scaling into correct units
-% G = Gscn;
+
 
 % transform from xyz to scanner coordinates
 Cprime = [0 -1 0; 1 0 0; 0 0 1];
@@ -341,9 +351,9 @@ end
 % permute: because of MATLAB x/y convention
 placeholderSlicePermute = permute(placeholderSlice,[1,2,3]);
 
-
 % get transformed slice coordinates using surf
 for ii = 1:zl
+    
     hslice = surf(cx(:,:,ii),cy(:,:,ii),cz(:,:,ii),placeholderSlicePermute(:,:,ii));
     
     %get the coordinates
@@ -359,8 +369,7 @@ view(3);
 title(['x = ' num2str(xTheta) ...
        ' y = ' num2str(yTheta) ...
        ' z = ' num2str(zTheta) ' (degrees)']);
-
-
+   
 % make a grid the size of the Scanner VOLUME
 [xvol,yvol,zvol] = meshgrid( 1:size(PHIpad,1) , 1:size(PHIpad,2), 1:size(PHIpad,3) );
 
@@ -425,7 +434,29 @@ for ii = 1:zl
     disp(['Slice ' num2str(ii) ' ...']);
 end
 
+% CMAP = colormap;
+% CBAR = colorbar;
+% cSiz = size(CMAP,1);
+% cMin = CBAR.Limits(1);
+% cMax = CBAR.Limits(2);
+% am2 = linspace(cMin,cMax,cSiz);
+% alphamap(abs(am2));
+
 disp('DONE ...');
+
+
+%% ADD NOISE TO STACK
+
+% mu = mean(STACK(:));
+% % sigma = std(V(:));
+% % measured bSSFP flow phantom:
+% % - ROI in water = 137
+% % - ROI in noise around phantom = 2
+% % - 137/2 = 68.5
+% sigma = 0.05 ./ 13; % this gives SNR = 68 in synthetic phantom image
+% 
+% N = normrnd(0,sigma,size(STACK));
+% STACKnoisy = STACK + N;
 
 
 %% Save stack as nii
@@ -446,7 +477,7 @@ nii.hdr.hist.sform_code = 1;
 % -2 offset required for some rotations... not sure why?!
 % -1 offset required for 45 degree rotation...
 
-if (xTheta == 45 && yTheta == 0 && zTheta == 0)
+if (xTheta == 45 && yTheta == 0 && zTheta == 0) || (xTheta == 50 && yTheta == 0 && zTheta == 0) 
     warning('Applying -1 offset to srow_x in .nii ... ');
     nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 1; %offset for 45 degree x-rotated stacks
 end
@@ -492,8 +523,22 @@ disp('DONE ...');
 
 disp(['Saving gradient moments as ... ' fileName(1:end-7) '_grad_moments.txt']);
 
-fileID = fopen([saveDataDir fileName(1:end-7) '_grad_moments.txt'],'w');
+% revert G back to scale on scanner
+G = G ./ (1e-3)^2;
+
+Gunit = G./norm(G);
+Gnorm = norm(G);
+
+fileID = fopen([saveDataDir fileName(1:end-7) '_scanner_grad_moments.txt'],'w');
 fprintf(fileID,'%.4f\t',G(:));
+fclose(fileID);
+
+fileID = fopen([saveDataDir fileName(1:end-7) '_grad_moment_dirs.txt'],'w');
+fprintf(fileID,'%.4f\t',Gunit(:));
+fclose(fileID);
+
+fileID = fopen([saveDataDir fileName(1:end-7) '_grad_moment_vals.txt'],'w');
+fprintf(fileID,'%.4f\t',Gnorm(:));
 fclose(fileID);
 
 disp('DONE ...');
