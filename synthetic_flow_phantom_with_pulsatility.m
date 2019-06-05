@@ -1,13 +1,3 @@
-%% POTENTIAL BUGS:
-% 1) after rotating the phantom volume, the padding from imwarp can result in new
-% volumes with odd-numbered voxels. padarray requires integers, therefore I
-% have to ceil, which means that PHIpad can be 401x401x600 voxels. I simply trim 
-% this down to 400x400x600, but it effectively means a half-voxel shift.
-%
-% 2) I haven't double-checked the rotation of the velocity volume. I
-% think it is about centre, but there are possible issues with the new velocity
-% volumes due to rotation
-
 
 tic;
 
@@ -17,8 +7,7 @@ sp = 'C:\Users\tr17\Documents\Projects\PC_Fetal_CMR\Data\Synthetic_Flow_Phantom'
 cd(sp)
 
 % dataDir = pwd;
-% saveDataDir = 'bSSFP_6pipes/data/';
-saveDataDir = 'bSSFP_6pipes_w_Noise_w_Motion/data/';
+saveDataDir = 'bSSFP_6pipes_w_pulsatility/data/';
 mkdir(saveDataDir);
 
 
@@ -45,6 +34,22 @@ PIPE4.vel = -100e-2;
 PIPE5.vel = -80e-2;
 PIPE6.vel = -25e-2;
 
+
+%% CREATE PULSATILITY FUNCTIONS
+nPhases = 30;  % Basically TR?
+x = linspace(1,20,nPhases);
+y = normpdf(x,5,1);
+yfac = 1/max(y);
+pulseProf1 = yfac .* y; %sharp, arterial-ish profile
+pulseProf1(pulseProf1 < 0.3) = 0.3; %slowest flow value
+% figure; plot(x,pulseProf1,'o-'); axis([1 20, 0 1]);
+
+y = normpdf(x,10,9);
+yfac = 1/max(y);
+pulseProf2 = circshift(yfac .* y,0); % more constant, venous profile
+% figure; plot(x,pulseProf2,'o-'); axis([1 20, 0 1]);
+
+
 %% CREATE PIPES
 %%% PIPE 1 - z-direction
 PIPE1.xsize = round(0.5*PIX.x/10);
@@ -58,6 +63,9 @@ gauss(outsidePipeIdx) = 0;
 % imtar(gauss);
 
 Vz = repmat(gauss,1,1,PIX.z); %extend gauss to make a pipe!
+
+% Make pipe pulsatile
+for nn = 1:nPhases; Vz1(:,:,:,nn) = Vz .* pulseProf1(nn); end
 
 %%% PIPE 2 - x-direction
 PIPE2.xsize = round(0.5*PIX.x/12);
@@ -73,6 +81,9 @@ gauss(:,81:end)=[];
 
 Vx = repmat(gauss,1,1,PIX.x); %extend gauss to make a pipe!
 
+% Make pipe pulsatile
+for nn = 1:nPhases; Vx1(:,:,:,nn) = Vx .* pulseProf1(nn); end
+
 %%% PIPE 3 - y-direction
 PIPE3.xsize = round(0.5*PIX.x/10);
 PIPE3.ysize = round(0.5*PIX.y/10);
@@ -87,6 +98,8 @@ gauss(81:end,:)=[];
 
 Vy = repmat(gauss,1,1,PIX.y); %extend gauss to make a pipe!
 
+% Make pipe pulsatile
+for nn = 1:nPhases; Vy1(:,:,:,nn) = Vy .* pulseProf1(nn); end
 
 %%% PIPE 4 - negative z-direction
 PIPE4.xsize = round(0.5*PIX.x/10);
@@ -99,7 +112,10 @@ outsidePipeIdx = find(abs(gauss) < 0.2*abs(PIPE4.vel)); % clip minimum flow at 2
 gauss(outsidePipeIdx) = 0;
 % imtar(gauss);
 
-Vz = Vz + repmat(gauss,1,1,PIX.z); %extend gauss to make a pipe!
+Vz = repmat(gauss,1,1,PIX.z); %extend gauss to make a pipe!
+
+% Make pipe pulsatile
+for nn = 1:nPhases; Vz2(:,:,:,nn) = Vz .* pulseProf2(nn); end
 
 %%% PIPE 5 - negative x-direction
 PIPE5.xsize = round(0.5*PIX.x/12);
@@ -113,8 +129,10 @@ gauss(outsidePipeIdx) = 0;
 gauss(:,81:end)=[];
 % imtar(gauss);
 
-Vx = Vx + repmat(gauss,1,1,PIX.x); %extend gauss to make a pipe!
-Vx = permute(Vx,[1,3,2]);
+Vx = repmat(gauss,1,1,PIX.x); %extend gauss to make a pipe!
+
+% Make pipe pulsatile
+for nn = 1:nPhases; Vx2(:,:,:,nn) = Vx .* pulseProf2(nn); end
 
 %%% PIPE 6 - negative y-direction
 PIPE6.xsize = round(0.5*PIX.x/10);
@@ -128,26 +146,42 @@ gauss(outsidePipeIdx) = 0;
 gauss(81:end,:)=[];
 % imtar(gauss);
 
-Vy = Vy + repmat(gauss,1,1,PIX.y); %extend gauss to make a pipe!
-Vy = permute(Vy,[3,2,1]);
+Vy = repmat(gauss,1,1,PIX.y); %extend gauss to make a pipe!
+
+% Make pipe pulsatile
+for nn = 1:nPhases; Vy2(:,:,:,nn) = Vy .* pulseProf2(nn); end
+
+
+%% Permute all pipes into same volume
+Vz1 = Vz1;
+Vz2 = Vz2;
+Vx1 = permute(Vx1,[1,3,2,4]);
+Vx2 = permute(Vx2,[1,3,2,4]);
+Vy1 = permute(Vy1,[3,2,1,4]);
+Vy2 = permute(Vy2,[3,2,1,4]);
+
+Vx = Vx1 + Vx2;
+Vy = Vy1 + Vy2;
+Vz = Vz1 + Vz2;
+
+clear Vx1 Vx2 Vy1 Vy2 Vz1 Vz2
 
 
 %% CREATE FLOW PHANTOM VELOCITY VOLUME
 V = Vz + Vx + Vy;
-% implay_RR(V);
+% implay_RR(V(:,:,60,:));
 
 
-%% VIEW NON-ROTATED PIPES (V)
-figure;
-h = vol3d('cdata',abs(V),'texture','3D'); %abs necessary for alphamap
-view(3); 
-% Update view since 'texture' = '2D'
-vol3d(h);
-set(gca,'CameraViewAngleMode','manual');
-axis square;
-xlabel('x-axis (AP)');
-ylabel('y-axis (RL)');
-zlabel('z-axis (FH)');
+%% VIEW PIPES (V)
+% h = vol3d('cdata',abs(V(:,:,:,1)),'texture','3D'); %abs purely for visualisation because of alphamap
+% view(3); 
+% % Update view since 'texture' = '2D'
+% vol3d(h);
+% set(gca,'CameraViewAngleMode','manual');
+% axis square;
+% xlabel('x-axis (AP)');
+% ylabel('y-axis (RL)');
+% zlabel('z-axis (FH)');
 
 
 %% SCANNER VOLUME
@@ -170,7 +204,7 @@ SCN.yCentre = SCN.l/2;
 SCN.zCentre = SCN.h/2;
 
 
-%% SLICE
+%% STACK
 % Must create slice properties before working out the phase values of the
 % flow phantom because PHI depends on the bSSFP sequence. i.e.: different
 % gradient orientations will result in different PHI.
@@ -178,12 +212,15 @@ SCN.zCentre = SCN.h/2;
 % slice dimensions
 xl = PIX.x; % i
 yl = PIX.y; % j
-zl = 100;   % k (no. of slices)
+zl = 100;    % k (no. of slices)
+dyn = 5;   % no. of dynamics 
+
+STACK = zeros(xl,yl,zl,dyn);
 
 % rotation
 % NB: non-rotated slice is defined as transverse within scanner, i.e:
 % vector normal points in z-direction (FH)
-xTheta = 90;
+xTheta = 45;
 yTheta = 0;
 zTheta = 0;
 
@@ -249,13 +286,14 @@ M = [1 0 0 -1; ...
      0 1 0 -1; ...
      0 0 1 -1; ...
      0 0 0 1];
-
+ 
+ 
 % final affine transformation matrix
 % --- followed here: http://gru.stanford.edu/doku.php/mrTools/coordinateTransforms
 % --- and here: http://www.euclideanspace.com/maths/geometry/affine/aroundPoint/
 
 % AFF = M*R*S*T;            % rotation only around (0,0,0)
-AFFslice = M*T*P*R*S*Pminus;     % rotation around arbitrary point P (ie: centre of slice)
+AFF = M*T*P*R*S*Pminus;     % rotation around arbitrary point P (ie: centre of slice)
 
 
 %% GRADIENT MOMENTS
@@ -283,170 +321,38 @@ G = Gscn * Cprime;
 % rotate gradient moments with slice rotation
 G = R(1:3,1:3) * G';
 
-% % rotate gradient moments with slice rotation AND motion
-% for zz = 1:zl
-%     Gmotion(:,zz) = R(1:3,1:3,zz) * G';
-% end
-
 GAMMA = 42577; %Hz/mT
 % GAMMA = 2 * pi * 42577; %Hz/mT
 
 
-%% MOTION EFFECTS
+%% PULSATILITY LOOP - acquire one slice per loop
 
-rotRange = 5; %-5 to +5 degree rotation
+% Pulsatility counter to keep track of where we are in RR-interval
+phaseCtr = repmat(1:nPhases,1,10000); phaseCtr = phaseCtr(1:zl*dyn);
+Ctr = 1;
 
-for zz = 1:zl   
-
-    sliceMotionOffset = -rotRange + (rotRange+rotRange)*rand(1,1); %single rotation offset between -rotRange and +rotRange    
-
-%     % z-only
-%     xThetaMotion = xTheta;
-%     yThetaMotion = yTheta;
-%     zThetaMotion(zz) = zTheta + sliceMotionOffset;
-%     
-%     rxMo = rotxtar(deg2rad(xThetaMotion));
-%     ryMo = rotytar(deg2rad(yThetaMotion));
-%     rzM0 = rotztar(deg2rad(zThetaMotion(zz)));
-    
-    xThetaMotion(zz) = sliceMotionOffset;
-    yThetaMotion(zz) = sliceMotionOffset;
-    zThetaMotion(zz) = sliceMotionOffset;
-    
-    rxMo = rotxtar(deg2rad(xThetaMotion(zz)));
-    ryMo = rotytar(deg2rad(yThetaMotion(zz)));
-    rzMo = rotztar(deg2rad(zThetaMotion(zz)));
-    
-    % rotation matrices
-    rxMo(:,4) = 0; ryMo(:,4) = 0; rzMo(:,4) = 0;
-    rxMo(4,:) = [0 0 0 1]; ryMo(4,:) = [0 0 0 1]; rzMo(4,:) = [0 0 0 1];
-    Rmo(:,:,zz) = rxMo*ryMo*rzMo; %keep track of R
-    
-    AFFmotion(:,:,zz) = M*T*P*Rmo(:,:,zz)*S*Pminus;
-    
-end
-
-%% GENERATED MOTION CORRUPTED PHANTOM VOLUMES
-
-disp('### Applying motion corruption to phantom ###');
-
-disp('Calculating new velocity components ...');
-
-% CALCULATE VELOCITY COMPONENTS FOLLOWING ROTATION
-
-% vectorise original phantom volume V to make Nx3 matrix
-Vvec(:,1) = Vx(:);
-Vvec(:,2) = Vy(:);
-Vvec(:,3) = Vz(:);
-
-Vvec_rot = zeros([size(Vvec),zl]);
-
-for ss = 1:zl
-    for ii = 1:length(Vvec)
-        currVvec = Vvec(ii,:)';
-        Vvec_rot(ii,:,ss) = AFFmotion(1:3,1:3,ss) * currVvec;
-    end
-    
-    disp(['Calculated new velocity components for volume number ... ' num2str(ss)]);
-    
-end
-
-% unvectorise and put component velocities into Vx/Vy/Vz
-subV=ind2subV(size(V),1:length(Vvec));
-
-Vrotx = zeros([size(V),zl]);
-Vroty = zeros([size(V),zl]);
-Vrotz = zeros([size(V),zl]);
-
-for ss = 1:zl
-    for ii = 1:length(subV)
-        i = subV(ii,1);
-        j = subV(ii,2);
-        k = subV(ii,3);
-
-        % create rotated components
-        Vrotx(i,j,k,ss) = Vvec_rot(ii,1,ss);
-        Vroty(i,j,k,ss) = Vvec_rot(ii,2,ss);
-        Vrotz(i,j,k,ss) = Vvec_rot(ii,3,ss);
-    end    
-end
-
-
-
-% PHYSICALLY ROTATE THE VOLUME
-
-disp('Performing synthetic phantom rotation ...');
-
-Vx_motion = {}; Vy_motion = {}; Vz_motion = {};
-
-for ss = 1:zl
-	
-    currAFF = AFFmotion(:,:,ss);
-    currAFF(:,4) = [0;0;0;1]; % final column must be [0;0;0;1] for imwarp
-
-    tform = affine3d(currAFF);
-
-    % apply rotation to components of synthetic phantom:
-    currVrotx = imwarp(Vrotx(:,:,:,ss),tform);
-    currVroty = imwarp(Vroty(:,:,:,ss),tform);
-    currVrotz = imwarp(Vrotz(:,:,:,ss),tform);
-    
-    Vx_motion{ss} = currVrotx;
-    Vy_motion{ss} = currVroty;
-    Vz_motion{ss} = currVrotz;
-
-end
-
-% make single 3D volume for each rotated phantom
-V_motion = {};
-
-for ss = 1:zl
-    V_motion{1,ss} = Vx_motion{1,ss} + Vy_motion{1,ss} + Vz_motion{1,ss};
-end
-
-
-%% VIEW PHANTOM MOTION
-% figure;
-% for ss = 1:zl
-%     cla;
-%     h = vol3d('cdata',abs(V_motion{1,ss}),'texture','3D'); %abs necessary for alphamap
-%     view(3); 
-%     % Update view since 'texture' = '2D'
-%     vol3d(h);
-%     set(gca,'CameraViewAngleMode','manual');
-%     axis square;
-%     title(['Z-Rotation = ' num2str(zThetaMotion(ss))])
-%     xlabel('x-axis (AP)');
-%     ylabel('y-axis (RL)');
-%     zlabel('z-axis (FH)');
-%     drawnow;
-% end
-
-
-%% FLOW PHANTOM PHASE VOLUME
-PHI_motion = {};
-PHIpad = zeros([SCN.p,SCN.l,SCN.h]);
-% PHIpad = {};
-STACK = zeros(xl,yl,zl);
-
-disp('Applying slices to motion corrupted velocity volumes ...');
+disp('Applying slices to velocity volume ...');
 
 for ZZ = 1:zl
-    PHI_motion{1,ZZ} = GAMMA .* ( G(1).*Vx_motion{1,ZZ} + G(2).*Vy_motion{1,ZZ} + G(3).*Vz_motion{1,ZZ} );
     
-    % pad around PHI with zeros:
-    % NB: worried about ceil! Might cause errors in location...
-    PHIpad = padarray(PHI_motion{1,ZZ},...
-                      ceil([(SCN.p-size(PHI_motion{1,ZZ},1))/2 ,...
-                     (SCN.l-size(PHI_motion{1,ZZ},2))/2 ,...
-                     (SCN.h-size(PHI_motion{1,ZZ},3))/2]),0,'both');
+    for DD = 1:dyn
+    
+    currPhase = phaseCtr(Ctr);
+    
+    %% FLOW PHANTOM PHASE VOLUME
+    PHI = GAMMA .* ( G(1).*Vx(:,:,:,currPhase) + G(2).*Vy(:,:,:,currPhase) + G(3).*Vz(:,:,:,currPhase) );
 
-    % make PHIpad phantom volumes ALL the same size. 
-    % padarray sometimes leaves 1 extra voxel of padding
-    %%% NB: this isn't great, as means phantom might not be consistently aligned in space
-    PHIpad = PHIpad(1:SCN.p,1:SCN.l,1:SCN.h);
-    
-%     clear PHIpad_temp
+    % pad around PHI with zeros:
+    PHIpad = padarray(PHI,[(SCN.p-size(PHI,1))/2 , (SCN.l-size(PHI,2))/2 , (SCN.h-size(PHI,3))/2],0,'both');
+
+    % check to see if PHIpad ranges from -ve to 0
+    % if so, invert, because vol3d likes value of empty pixels < render region
+    % flagInvertPHIpad = 'no';
+    % if max(PHIpad(:)) == 0
+    %     PHIpad = -1 * PHIpad;
+    %     flagInvertPHIpad = 'yes';
+    % end
+
 
     %% View VOLUME
     % NB: this must be rendered for surf to work when extracting slices
@@ -464,9 +370,9 @@ for ZZ = 1:zl
     grid on;
     hold on;
 
-    xlabel('x-axis (AP)');
-    ylabel('y-axis (RL)');
-    zlabel('z-axis (FH)');
+%     xlabel('x-axis (AP)');
+%     ylabel('y-axis (RL)');
+%     zlabel('z-axis (FH)');
 
 
     %% MAKE SLICES + APPLY TO VELOCITY VOLUME
@@ -492,7 +398,7 @@ for ZZ = 1:zl
                              1];
 
                 % apply affine to coordinate
-                currAFFcoord = AFFslice*currCoord;
+                currAFFcoord = AFF*currCoord;
 
                 % save transformed coordinate
                 cx(xx,yy,zz) = currAFFcoord(1);
@@ -519,11 +425,11 @@ for ZZ = 1:zl
         delete(hslice); % visualisation comes later
 
     end
-    view(3);
+%     view(3);
 
-    title(['x = ' num2str(xTheta) ...
-           ' y = ' num2str(yTheta) ...
-           ' z = ' num2str(zTheta) ' (degrees)']);
+%     title(['x = ' num2str(xTheta) ...
+%            ' y = ' num2str(yTheta) ...
+%            ' z = ' num2str(zTheta) ' (degrees)']);
 
     % make a grid the size of the Scanner VOLUME
     [xvol,yvol,zvol] = meshgrid( 1:size(PHIpad,1) , 1:size(PHIpad,2), 1:size(PHIpad,3) );
@@ -535,18 +441,21 @@ for ZZ = 1:zl
         hslice.FaceColor = 'texturemap';
         hslice.EdgeColor = 'none';
     %     drawnow;
-        STACK(:,:,ii) = hslice.CData;
+        STACK(:,:,ii,DD) = hslice.CData;
 
-        disp(['Slice ' num2str(ii) ' ...']);
+        disp(['Slice ' num2str(ii) ' , Dynamic ' num2str(DD) ' ...']);
 
         delete(hslice);
     end
 
     close;
     
-%     clear PHIpad
+    % update pulsatility counter (ie: next phase in cardiac cycle)
+    Ctr = Ctr + 1;
 
-end
+    end % dynamics loop
+    
+end % end slices loop
 
 disp('DONE ...');
 
@@ -618,18 +527,17 @@ N = normrnd(0,sigma,size(STACK));
 STACKnoisy = STACK + N;
 STACK = STACKnoisy;
 
-
 %% Save stack as nii
 
-nii = make_nii(permute(STACK,[2,1,3])); %NB: permute as MATLAB flips x/y
+nii = make_nii(permute(STACK,[2,1,3,4])); %NB: permute as MATLAB flips x/y
 
-% nb: 3 below is super important!! Otherwise .nii doesn't render in-plane in MITK
-nii.hdr.dime.dim = [3 size(nii.img,1) size(nii.img,2) size(nii.img,3) 1 1 1 1];
+% nb: 4 below is super important!! Otherwise .nii doesn't render in-plane in MITK
+nii.hdr.dime.dim = [4 size(nii.img,1) size(nii.img,2) size(nii.img,3) dyn 1 1 1];
 nii.hdr.dime.pixdim(4) = 1; %give some thickness...
 
-nii.hdr.hist.srow_x = AFFslice(2,:); %NB: MATLAB flips x/y - need AFF to match phi permutation
-nii.hdr.hist.srow_y = AFFslice(1,:);
-nii.hdr.hist.srow_z = AFFslice(3,:);
+nii.hdr.hist.srow_x = AFF(2,:); %NB: MATLAB flips x/y - need AFF to match phi permutation
+nii.hdr.hist.srow_y = AFF(1,:);
+nii.hdr.hist.srow_z = AFF(3,:);
 nii.hdr.hist.sform_code = 1;
 
 %%% Offset corrections
@@ -642,12 +550,12 @@ if (xTheta == 45 && yTheta == 0 && zTheta == 0) || (xTheta == 50 && yTheta == 0 
     nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 1; %offset for 45 degree x-rotated stacks
 end
 
-if (xTheta == 90 && yTheta == 0 && zTheta == 0)
+if (xTheta == 90 && yTheta == 0 && zTheta == 0) 
     warning('Applying -2 offset to srow_x in .nii ... ');
     nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 2; %offset for 90 degree x-rotated stacks
 end
 
-if (xTheta == 0 && yTheta == 0 && zTheta == 90) || (xTheta == 0 && yTheta == 0 && zTheta == 150)
+if (xTheta == 0 && yTheta == 0 && zTheta == 90)
     warning('Applying -2 offset to srow_y in .nii ... ');
     nii.hdr.hist.srow_y(4) = nii.hdr.hist.srow_y(4) - 2; %offset for 90 degree z-rotated stacks
 end
@@ -662,6 +570,31 @@ if (xTheta == 30 && yTheta == 60 && zTheta == 0)
     nii.hdr.hist.srow_z(4) = nii.hdr.hist.srow_z(4) - 1;
 end
 
+if (xTheta == 0 && yTheta == 0 && zTheta == 150)
+    warning('Applying -1 offset to srow_x in .nii ... ');
+    nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 1;
+    
+    warning('Applying -2 offset to srow_y in .nii ... ');
+    nii.hdr.hist.srow_y(4) = nii.hdr.hist.srow_y(4) - 2;
+end
+
+if (xTheta == 0 && yTheta == 0 && zTheta == 130)
+    warning('Applying -1 offset to srow_x in .nii ... ');
+    nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 1;
+    
+    warning('Applying -1.5 offset to srow_y in .nii ... ');
+    nii.hdr.hist.srow_y(4) = nii.hdr.hist.srow_y(4) - 1.5;
+end
+
+if (xTheta == 0 && yTheta == 0 && zTheta == 110)
+    warning('Applying -1 offset to srow_x in .nii ... ');
+    nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 0.5;
+    
+    warning('Applying -1.5 offset to srow_y in .nii ... ');
+    nii.hdr.hist.srow_y(4) = nii.hdr.hist.srow_y(4) - 2;
+end
+
+
 % TO DO: automate pixdim once I implement voxel scaling
 
 fileName = ['stack_rx' num2str(xTheta) ...
@@ -671,8 +604,8 @@ fileName = ['stack_rx' num2str(xTheta) ...
                  '_ty' num2str(ty_offset) ...
                  '_tz' num2str(tz_offset) ...
                  '_slices' num2str(zl) ...
-                 '_mocorrupt' ...
-                 '.nii.gz'];
+                 '_dyn' num2str(dyn) ...
+                 '_pulsatile.nii.gz'];
              
 save_nii(nii,[saveDataDir fileName]);
 
@@ -707,25 +640,16 @@ disp('DONE ...');
 
 %% Save FIGURE
 
-disp(['Saving stacks/velocity visualisation as ... ' fileName(1:end-7) '.fig']);
-saveas(gcf,[saveDataDir fileName(1:end-7) '.fig']);
-
-disp(['Saving stacks/velocity visualisation render as ... ' fileName(1:end-7) '.png']);
-saveas(gcf,[saveDataDir fileName(1:end-7) '.png']);
-
-disp('DONE ...');
-
-
-%% Save ROTATION INFORMATION
-disp('Saving motion corruption parameters ... ');
-save([saveDataDir fileName(1:end-7) '_parameters.mat'],...
-     'xThetaMotion','yThetaMotion','zThetaMotion',...
-     'Rmo','rxMo','ryMo','rzMo',...
-     'AFFmotion');
-
-disp('DONE ...');
-
-toc;
+% disp(['Saving stacks/velocity visualisation as ... ' fileName(1:end-7) '.fig']);
+% saveas(gcf,[saveDataDir fileName(1:end-7) '.fig']);
+% 
+% disp(['Saving stacks/velocity visualisation render as ... ' fileName(1:end-7) '.png']);
+% saveas(gcf,[saveDataDir fileName(1:end-7) '.png']);
+% 
+% disp('DONE ...');
+% 
+% 
+% toc;
 
 
 %% SAVE VELOCITY VOLUME
@@ -733,6 +657,10 @@ toc;
 % clear niiV
 % 
 % Vpad = padarray(V,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
+% 
+% % Vpad = padarray(Vx,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
+% % Vpad = padarray(Vy,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
+% % Vpad = padarray(Vz,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
 % 
 % niiV = make_nii(Vpad);
 % niiV.hdr.dime.dim    = [3 size(niiV.img,1) size(niiV.img,2) size(niiV.img,3) 1 1 1 1];
@@ -747,3 +675,195 @@ toc;
 % save_nii(niiV,'VEL_VOLUME_srow4_equal0.nii.gz');
 % 
 % disp('Made Velocity Volume .nii ...');
+
+
+%% Save permutations
+
+%%%%%%%%%% NB: need to correct below. Moved from STACK.phi to STACK
+
+
+%- testing permutations of STACK
+
+% STACK.phi123 = permute(STACK,[1,2,3]);
+% STACK.phi132 = permute(STACK,[1,3,2]);
+% 
+% STACK.phi213 = permute(STACK,[2,1,3]);
+% STACK.phi231 = permute(STACK,[2,3,1]);
+% 
+% STACK.phi312 = permute(STACK,[3,1,2]);
+% STACK.phi321 = permute(STACK,[3,2,1]);
+% 
+% %%% 1) perm123
+% 
+% nii = make_nii(STACK.phi123);
+% 
+% % nb: 3 below is super important!! Otherwise .nii doesn't render in-plane in MITK
+% nii.hdr.dime.dim    = [3 size(nii.img,1) size(nii.img,2) size(nii.img,3) 1 1 1 1];
+% % nii.hdr.dime.dim    = [3 size(STACK.phi,1) size(STACK.phi,2) size(STACK.phi,3) 1 1 1 1];
+% nii.hdr.dime.pixdim(4) = 1; %give some thickness... 
+% 
+% nii.hdr.hist.srow_x = AFF(2,:);
+% nii.hdr.hist.srow_y = AFF(1,:);
+% nii.hdr.hist.srow_z = AFF(3,:);
+% nii.hdr.hist.sform_code = 1;
+% 
+% %TO DO: fill in pixdim and glmax/glmin etc.
+% 
+% fileName = ['stack_x' num2str(xTheta) ...
+%                  '_y' num2str(yTheta) ...
+%                  '_z' num2str(zTheta) ...
+%                  '_tx' num2str(manualtx) ...
+%                  '_ty' num2str(manualty) ...
+%                  '_tz' num2str(manualtz) ...
+%                  '_test_perm123.nii.gz'];
+%              
+% save_nii(nii,fileName);
+% 
+% disp(['Saved stack as ... ' fileName]);
+% 
+% 
+% %%% 2) perm132
+% 
+% nii = make_nii(STACK.phi132);
+% 
+% % nb: 3 below is super important!! Otherwise .nii doesn't render in-plane in MITK
+% nii.hdr.dime.dim    = [3 size(nii.img,1) size(nii.img,2) size(nii.img,3) 1 1 1 1];
+% % nii.hdr.dime.dim    = [3 size(STACK.phi,1) size(STACK.phi,2) size(STACK.phi,3) 1 1 1 1];
+% nii.hdr.dime.pixdim(4) = 1; %give some thickness... 
+% 
+% nii.hdr.hist.srow_x = AFF(2,:);
+% nii.hdr.hist.srow_y = AFF(1,:);
+% nii.hdr.hist.srow_z = AFF(3,:);
+% nii.hdr.hist.sform_code = 1;
+% 
+% %TO DO: fill in pixdim and glmax/glmin etc.
+% 
+% fileName = ['stack_x' num2str(xTheta) ...
+%                  '_y' num2str(yTheta) ...
+%                  '_z' num2str(zTheta) ...
+%                  '_tx' num2str(manualtx) ...
+%                  '_ty' num2str(manualty) ...
+%                  '_tz' num2str(manualtz) ...
+%                  '_test_perm132.nii.gz'];
+%              
+% save_nii(nii,fileName);
+% 
+% disp(['Saved stack as ... ' fileName]);
+% 
+% 
+% %%% 3) perm213
+% 
+% nii = make_nii(STACK.phi213);
+% 
+% % nb: 3 below is super important!! Otherwise .nii doesn't render in-plane in MITK
+% nii.hdr.dime.dim    = [3 size(nii.img,1) size(nii.img,2) size(nii.img,3) 1 1 1 1];
+% % nii.hdr.dime.dim    = [3 size(STACK.phi,1) size(STACK.phi,2) size(STACK.phi,3) 1 1 1 1];
+% nii.hdr.dime.pixdim(4) = 1; %give some thickness... 
+% 
+% nii.hdr.hist.srow_x = AFF(2,:);
+% nii.hdr.hist.srow_y = AFF(1,:);
+% nii.hdr.hist.srow_z = AFF(3,:);
+% nii.hdr.hist.sform_code = 1;
+% 
+% %TO DO: fill in pixdim and glmax/glmin etc.
+% 
+% fileName = ['stack_x' num2str(xTheta) ...
+%                  '_y' num2str(yTheta) ...
+%                  '_z' num2str(zTheta) ...
+%                  '_tx' num2str(manualtx) ...
+%                  '_ty' num2str(manualty) ...
+%                  '_tz' num2str(manualtz) ...
+%                  '_test_perm213.nii.gz'];
+%              
+% save_nii(nii,fileName);
+% 
+% disp(['Saved stack as ... ' fileName]);
+% 
+% 
+% %%% 4) perm231
+% 
+% nii = make_nii(STACK.phi231);
+% 
+% % nb: 3 below is super important!! Otherwise .nii doesn't render in-plane in MITK
+% nii.hdr.dime.dim    = [3 size(nii.img,1) size(nii.img,2) size(nii.img,3) 1 1 1 1];
+% % nii.hdr.dime.dim    = [3 size(STACK.phi,1) size(STACK.phi,2) size(STACK.phi,3) 1 1 1 1];
+% nii.hdr.dime.pixdim(4) = 1; %give some thickness... 
+% 
+% nii.hdr.hist.srow_x = AFF(2,:);
+% nii.hdr.hist.srow_y = AFF(1,:);
+% nii.hdr.hist.srow_z = AFF(3,:);
+% nii.hdr.hist.sform_code = 1;
+% 
+% %TO DO: fill in pixdim and glmax/glmin etc.
+% 
+% fileName = ['stack_x' num2str(xTheta) ...
+%                  '_y' num2str(yTheta) ...
+%                  '_z' num2str(zTheta) ...
+%                  '_tx' num2str(manualtx) ...
+%                  '_ty' num2str(manualty) ...
+%                  '_tz' num2str(manualtz) ...
+%                  '_test_perm231.nii.gz'];
+%              
+% save_nii(nii,fileName);
+% 
+% disp(['Saved stack as ... ' fileName]);
+% 
+% 
+% %%% 5) perm312
+% 
+% nii = make_nii(STACK.phi312);
+% 
+% % nb: 3 below is super important!! Otherwise .nii doesn't render in-plane in MITK
+% nii.hdr.dime.dim    = [3 size(nii.img,1) size(nii.img,2) size(nii.img,3) 1 1 1 1];
+% % nii.hdr.dime.dim    = [3 size(STACK.phi,1) size(STACK.phi,2) size(STACK.phi,3) 1 1 1 1];
+% nii.hdr.dime.pixdim(4) = 1; %give some thickness... 
+% 
+% nii.hdr.hist.srow_x = AFF(2,:);
+% nii.hdr.hist.srow_y = AFF(1,:);
+% nii.hdr.hist.srow_z = AFF(3,:);
+% nii.hdr.hist.sform_code = 1;
+% 
+% %TO DO: fill in pixdim and glmax/glmin etc.
+% 
+% fileName = ['stack_x' num2str(xTheta) ...
+%                  '_y' num2str(yTheta) ...
+%                  '_z' num2str(zTheta) ...
+%                  '_tx' num2str(manualtx) ...
+%                  '_ty' num2str(manualty) ...
+%                  '_tz' num2str(manualtz) ...
+%                  '_test_perm312.nii.gz'];
+%              
+% save_nii(nii,fileName);
+% 
+% disp(['Saved stack as ... ' fileName]);
+% 
+% 
+% %%% 6) perm321
+% 
+% nii = make_nii(STACK.phi321);
+% 
+% % nb: 3 below is super important!! Otherwise .nii doesn't render in-plane in MITK
+% nii.hdr.dime.dim    = [3 size(nii.img,1) size(nii.img,2) size(nii.img,3) 1 1 1 1];
+% % nii.hdr.dime.dim    = [3 size(STACK.phi,1) size(STACK.phi,2) size(STACK.phi,3) 1 1 1 1];
+% nii.hdr.dime.pixdim(4) = 1; %give some thickness... 
+% 
+% nii.hdr.hist.srow_x = AFF(2,:);
+% nii.hdr.hist.srow_y = AFF(1,:);
+% nii.hdr.hist.srow_z = AFF(3,:);
+% nii.hdr.hist.sform_code = 1;
+% 
+% %TO DO: fill in pixdim and glmax/glmin etc.
+% 
+% fileName = ['stack_x' num2str(xTheta) ...
+%                  '_y' num2str(yTheta) ...
+%                  '_z' num2str(zTheta) ...
+%                  '_tx' num2str(manualtx) ...
+%                  '_ty' num2str(manualty) ...
+%                  '_tz' num2str(manualtz) ...
+%                  '_test_perm321.nii.gz'];
+%              
+% save_nii(nii,fileName);
+% 
+% disp(['Saved stack as ... ' fileName]);
+
+

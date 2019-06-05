@@ -7,7 +7,7 @@ sp = 'C:\Users\tr17\Documents\Projects\PC_Fetal_CMR\Data\Synthetic_Flow_Phantom'
 cd(sp)
 
 % dataDir = pwd;
-saveDataDir = 'QFlow_6pipes/data/';
+saveDataDir = 'bSSFP_6pipes/data/';
 mkdir(saveDataDir);
 
 
@@ -127,15 +127,24 @@ V = Vz + Vx + Vy;
 
 
 %% VIEW PIPES (V)
-h = vol3d('cdata',abs(V),'texture','3D'); %abs purely for visualisation because of alphamap
-view(3); 
+h = vol3d('cdata',V,'texture','3D'); %abs purely for visualisation because of alphamap
+% view(3);
+view(45+180,30);
 % Update view since 'texture' = '2D'
 vol3d(h);
+am = abs(linspace(min(V(:)),max(V(:)),64)); % zero = transparent
+am(31:33) = 0;
+alphamap(am);
 set(gca,'CameraViewAngleMode','manual');
-axis square;
-xlabel('x-axis (AP)');
-ylabel('y-axis (RL)');
-zlabel('z-axis (FH)');
+axis image;
+colormap('jet');
+% xlabel('x-axis (AP)');
+% ylabel('y-axis (RL)');
+% zlabel('z-axis (FH)');
+% xlabel('X');
+% ylabel('Y');
+% zlabel('Z');
+set(gca,'xticklabel',[]); set(gca,'yticklabel',[]); set(gca,'zticklabel',[]);
 
 
 %% SCANNER VOLUME
@@ -166,12 +175,19 @@ SCN.zCentre = SCN.h/2;
 % slice dimensions
 xl = PIX.x; % i
 yl = PIX.y; % j
-zl = 100;   % k (no. of slices)
+zl = 5;   % k (no. of slices)
+
+xl = 6; % i
+yl = 6; % j
+zl = 6;   % k (no. of slices)
 
 % rotation
 % NB: non-rotated slice is defined as transverse within scanner, i.e:
 % vector normal points in z-direction (FH)
-xTheta = 50;
+% xTheta = -10;
+% yTheta = -20;
+% zTheta = 110;
+xTheta = 0;
 yTheta = 0;
 zTheta = 0;
 
@@ -181,8 +197,8 @@ ycp = round(yl/2);
 zcp = round(zl/2);
 
 % translation (from origin)
-tx_offset = 10;
-ty_offset = 5;
+tx_offset = 0;
+ty_offset = 0;
 tz_offset = 0;
 
 tx = tx_offset + SCN.xCentre - xcp + 1; % +1 seems correct to line-up with PHIpad
@@ -299,7 +315,8 @@ disp('Applying slices to velocity volume ...');
 figure;
 ax1 = axes;
 h = vol3d('cdata',PHIpad,'texture','2D');
-view(3); 
+% view(3);
+view(45+180,30);
 % Update view since 'texture' = '2D'
 vol3d(h);
 am = abs(linspace(min(PHIpad(:)),max(PHIpad(:)),64)); % zero = transparent
@@ -309,9 +326,9 @@ ax1.CameraViewAngleMode = 'manual';
 grid on;
 hold on;
 
-xlabel('x-axis (AP)');
-ylabel('y-axis (RL)');
-zlabel('z-axis (FH)');
+% xlabel('x-axis (AP)');
+% ylabel('y-axis (RL)');
+% zlabel('z-axis (FH)');
 
 
 %% MAKE SLICES + APPLY TO VELOCITY VOLUME
@@ -375,7 +392,7 @@ title(['x = ' num2str(xTheta) ...
 
 % put the transformed slice into Scanner VOLUME grid and extract VOLUME values
 STACK = zeros(xl,yl,zl);
-parfor ii = 1:zl
+for ii = 1:zl
     hslice = slice(xvol,yvol,zvol,PHIpad,xslice(:,:,ii),yslice(:,:,ii),zslice(:,:,ii));
     hslice.FaceColor = 'texturemap';
     hslice.EdgeColor = 'none';
@@ -390,6 +407,32 @@ end
 close;
 
 disp('DONE ...');
+
+
+%% Slice renders for paper figure:
+% figure;
+% ax1 = axes;
+% view(45+180,30);
+% axis image;
+% ax1.CameraViewAngleMode = 'manual';
+% grid on;
+% hold on;
+% 
+% for ii = 1:zl
+%     hslice = slice(xvol,yvol,zvol,PHIpad,xslice(:,:,ii),yslice(:,:,ii),zslice(:,:,ii));
+%     hslice.FaceColor = 'k';
+%     hslice.EdgeColor = 'none';
+%     hslice.CData = zeros(size(hslice.CData));
+%     drawnow;
+%     
+%     disp(['Slice ' num2str(ii) ' ...']);
+% end
+% 
+% colormap('gray');
+% zoom(2);
+% axis([100 300 100 300 220 380]);
+% set(gca,'xticklabel',[]); set(gca,'yticklabel',[]); set(gca,'zticklabel',[]);  %set(gca,'visible','off');
+
 
 
 %% BIT OF A BODGE --- VISUALISE STACKS THROUGH VOLUME
@@ -409,7 +452,8 @@ ax1 = axes;
 %%%%% crucial here: abs() --- needed to for visualisation
 % without abs, alphamap doesn't render zeros as transparent when using surf
 h = vol3d('cdata',abs(PHIpad),'texture','2D'); 
-view(3); 
+% view(3); 
+view(45+180,30);
 % Update view since 'texture' = '2D'
 vol3d(h);
 axis image;
@@ -426,9 +470,10 @@ title(['x = ' num2str(xTheta) ...
        ' z = ' num2str(zTheta) ' (degrees)']);
 
 for ii = 1:zl
-    hslice = slice(xvol,yvol,zvol,abs(PHIpad),xslice(:,:,ii),yslice(:,:,ii),zslice(:,:,ii));
+    hslice = slice(xvol,yvol,zvol,PHIpad,xslice(:,:,ii),yslice(:,:,ii),zslice(:,:,ii));
     hslice.FaceColor = 'k';
     hslice.EdgeColor = 'none';
+    hslice.CData = zeros(size(hslice.CData));
     drawnow;
     
     disp(['Slice ' num2str(ii) ' ...']);
@@ -442,22 +487,52 @@ end
 % am2 = linspace(cMin,cMax,cSiz);
 % alphamap(abs(am2));
 
+%%% FOR PAPER FIGURE:
+
+% Above:
+% xTheta = -10;
+% yTheta = -20;
+% zTheta = 110;
+% 
+% tx_offset = 0;
+% ty_offset = 0;
+% tz_offset = 0;
+
+colormap('gray');
+zoom(2);
+axis([115 285 115 285 260 350]);
+xlabel('');
+ylabel('');
+zlabel('');
+title('');
+
+% am = normalize(abs(linspace(min(PHIpad(:)),max(PHIpad(:)),64)),'range',[0,1]); % zero = transparent
+% am(20:21) = 0;
+% alphamap(am);
+
+am1=normalize(abs(linspace(min(PHIpad(:)),0,20)),'range',[0,1]);
+am2=normalize(abs(linspace(0,max(PHIpad(:)),44)),'range',[0,1]);
+am=[am1 am2];
+% am(20) = 0;
+am(33) = 0;
+alphamap(am);
+
 disp('DONE ...');
 
 
 %% ADD NOISE TO STACK
 
-% mu = mean(STACK(:));
-% % sigma = std(V(:));
-% % measured bSSFP flow phantom:
-% % - ROI in water = 137
-% % - ROI in noise around phantom = 2
-% % - 137/2 = 68.5
-% sigma = 0.05 ./ 13; % this gives SNR = 68 in synthetic phantom image
-% 
-% N = normrnd(0,sigma,size(STACK));
-% STACKnoisy = STACK + N;
+mu = mean(STACK(:));
+% sigma = std(V(:));
+% measured bSSFP flow phantom:
+% - ROI in water = 137
+% - ROI in noise around phantom = 2
+% - 137/2 = 68.5
+sigma = 0.05 ./ 13; % this gives SNR = 68 in synthetic phantom image
 
+N = normrnd(0,sigma,size(STACK));
+STACKnoisy = STACK + N;
+STACK = STACKnoisy;
 
 %% Save stack as nii
 
@@ -482,7 +557,7 @@ if (xTheta == 45 && yTheta == 0 && zTheta == 0) || (xTheta == 50 && yTheta == 0 
     nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 1; %offset for 45 degree x-rotated stacks
 end
 
-if (xTheta == 90 && yTheta == 0 && zTheta == 0)
+if (xTheta == 90 && yTheta == 0 && zTheta == 0) 
     warning('Applying -2 offset to srow_x in .nii ... ');
     nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 2; %offset for 90 degree x-rotated stacks
 end
@@ -501,6 +576,31 @@ if (xTheta == 30 && yTheta == 60 && zTheta == 0)
     warning('Applying -1 offset to srow_z in .nii ... ');
     nii.hdr.hist.srow_z(4) = nii.hdr.hist.srow_z(4) - 1;
 end
+
+if (xTheta == 0 && yTheta == 0 && zTheta == 150)
+    warning('Applying -1 offset to srow_x in .nii ... ');
+    nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 1;
+    
+    warning('Applying -2 offset to srow_y in .nii ... ');
+    nii.hdr.hist.srow_y(4) = nii.hdr.hist.srow_y(4) - 2;
+end
+
+if (xTheta == 0 && yTheta == 0 && zTheta == 130)
+    warning('Applying -1 offset to srow_x in .nii ... ');
+    nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 1;
+    
+    warning('Applying -1.5 offset to srow_y in .nii ... ');
+    nii.hdr.hist.srow_y(4) = nii.hdr.hist.srow_y(4) - 1.5;
+end
+
+if (xTheta == 0 && yTheta == 0 && zTheta == 110)
+    warning('Applying -1 offset to srow_x in .nii ... ');
+    nii.hdr.hist.srow_x(4) = nii.hdr.hist.srow_x(4) - 0.5;
+    
+    warning('Applying -1.5 offset to srow_y in .nii ... ');
+    nii.hdr.hist.srow_y(4) = nii.hdr.hist.srow_y(4) - 2;
+end
+
 
 % TO DO: automate pixdim once I implement voxel scaling
 
@@ -563,6 +663,10 @@ toc;
 % clear niiV
 % 
 % Vpad = padarray(V,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
+% 
+% % Vpad = padarray(Vx,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
+% % Vpad = padarray(Vy,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
+% % Vpad = padarray(Vz,[(SCN.p-size(V,1))/2 , (SCN.l-size(V,2))/2 , (SCN.h-size(V,3))/2],0,'both');
 % 
 % niiV = make_nii(Vpad);
 % niiV.hdr.dime.dim    = [3 size(niiV.img,1) size(niiV.img,2) size(niiV.img,3) 1 1 1 1];

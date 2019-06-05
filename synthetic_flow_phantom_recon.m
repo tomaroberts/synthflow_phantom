@@ -41,7 +41,7 @@ for ii = 1:numel(stackNames)
     tempNii = load_untouch_nii([dataDir stackNames{ii} '_affine.nii.gz']);
     STACKS(:,:,:,ii) = tempNii.img;
     
-    G(ii,:) = load([dataDir stackNames{ii} '_grad_moments.txt']);
+    G(ii,:) = load([dataDir stackNames{ii} '_scanner_grad_moments.txt']);
     clear tempNii
 end
 
