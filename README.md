@@ -5,8 +5,9 @@ synthetic flow phantom for simulating constant velocity water in pipes and acqui
 ## Publications
 
 __Fetal whole-heart 4D flow cine MRI using multiple non-coplanar balanced SSFP stacks__  
-Thomas A. Roberts, Joshua FP van Amerom, Alena Uus, David FA Lloyd, Anthony N. Price, Jacques-Donald Tournier, Laurence H. Jackson, Shaihan J Malik, Milou PM van Poppel, Kuberan Pushparajah, Mary A Rutherford, Reza Rezavi, Maria Deprez, Joseph V. Hajnal.  
-bioRxiv. 2019. doi: [https://doi.org/10.1101/635797](https://doi.org/10.1101/635797) (_pre-print_)  
+Thomas A. Roberts, Joshua FP van Amerom, Alena Uus, David FA Lloyd, Anthony N. Price, Jacques-Donald Tournier, Laurence H. Jackson, Shaihan J Malik, Milou PM van Poppel, Kuberan Pushparajah, Mary A Rutherford, Reza Rezavi, Maria Deprez, Joseph V. Hajnal. 
+
+__bioRxiv__. 2019. doi: [https://doi.org/10.1101/635797](https://doi.org/10.1101/635797) (_pre-print_)  
 
 ## Directories
 
@@ -17,7 +18,7 @@ __matlab-common__ - submodule containing useful MATLAB scripts
 
 ## Installation
 
-Add everything to MATLAB path. Run synthflow_phantom.m.
+Add everything to MATLAB path. Run synthflow_phantom.m. Edit if desired.
 
 
 ## External Dependencies
@@ -27,7 +28,7 @@ None, but rview is recommended for viewing the output .nii files in a world coor
 
 ## Overview 
 
-For volumetric fetal MRI, multiple stacks of single-slice data are acquired and combined to make a 3- or 4-dimensional reconstructed volume. For fetal blood flow imaging of the heart and major vessels, we adopt a similar approach. The acquired stacks can be orientated at any angle in space, therefore, the velocity-encoding directions associated with the stacks are non-colinear, i.e: they are not conveniently aligned along orthogonal x-/y-/z- axes, as would be the case in conventional MR velocity imaging.
+For volumetric fetal MRI, multiple stacks of single-slice data are acquired and combined to make a 3- or 4-dimensional reconstructed volume using slice-to-volume registration (SVR) techniques. For fetal blood flow imaging of the heart and major vessels, we adopt a similar approach. The acquired stacks can be orientated at any angle in space, therefore, the velocity-encoding directions associated with the stacks are non-colinear, i.e: they are not conveniently aligned along orthogonal x-/y-/z- axes, as is often the case in conventional MR velocity imaging.
 
 The purpose of this synthetic flow phantom is to simulate acquiring stacks of phase contrast MR images in any orientation, which can then be recombined to form a 3D vector representation of flow velocity. By default, the flow phantom consists of six orthogonal pipes with a range of flow rates:
 
@@ -40,9 +41,9 @@ The user can then 'image' the phantom in any orientation using a configurable st
 
 ## Steps
 
-__Setup__  \
+__Setup__
 
-1. Add folder and subfolders to MATLAB path.  \
+1. Add folder and subfolders to MATLAB path.
 2. Open `synthflow_phantom.m` and run.
 	- This is a wrapper script so that parameters can be edited without changing the main files.
 	- Default settings can be used, or user can edit.
