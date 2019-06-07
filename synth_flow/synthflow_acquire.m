@@ -76,7 +76,7 @@ am = abs(linspace(min(V(:)),max(V(:)),64)); am(31:33) = 0; % zero = transparent
 alphamap(am);
 set(gca,'CameraViewAngleMode','manual');
 axis image;
-colormap('jet'); c = colorbar; c.Label.String = 'Velocity [cm/s]';
+colormap(jet(512)); c = colorbar; c.Label.String = 'Velocity [cm/s]';
 title('Flow Phantom Velocity Volume');
 xlabel('x-axis (AP)');
 ylabel('y-axis (RL)');
@@ -203,7 +203,7 @@ axis image;
 ax1.CameraViewAngleMode = 'manual';
 grid on;
 hold on;
-colormap('gray'); c = colorbar; c.Label.String = 'Phase [rads]';
+colormap(gray(256)); c = colorbar; c.Label.String = 'Phase [rads]';
 
 xlabel('x-axis (AP)');
 ylabel('y-axis (RL)');
@@ -259,16 +259,19 @@ for ii = 1:zl
     hslice.FaceColor = 'k';
     hslice.EdgeColor = 'none';
     
-    % adjust alphamap to render zero phase regions as transparent
+    % make finer alphamap and adjust to render zero phase regions as transparent
     if ii == 1
-        cmap = linspace(h2.parent.ALim(1),h2.parent.ALim(2),64);
-        fract = 10^-6; idx = cmap<=fract; % find zero point in colormap
-        AM = alphamap; AM(find(idx,1,'last')) = 0; alphamap(AM);
+        % colormap
+        newCM = linspace(h2.parent.ALim(1),h2.parent.ALim(2),512);
+        
+        % alphamap
+        fract = 10^-6; idx = newCM<=fract; % find zero point in colormap        
+        newAM = abs(linspace(h2.parent.ALim(1),-1*h2.parent.ALim(1),512));
+        newAM(find(idx,1,'last'):find(idx,1,'last')+1) = 0; alphamap(newAM);
     end
     
     drawnow;
     STACK(:,:,ii) = hslice.CData;
-    hslice.FaceColor = 'k';
     
     disp(['Slice ' num2str(ii) ' ...']);
 end

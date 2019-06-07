@@ -3,13 +3,10 @@
 %   SYNTHFLOW_PHANTOM( )
 %
 %   instructions:
-%       This is a wrapper script for synthflow_acquire.m, which allows the
-%       user to choose various parameters associa
-%
-%       By default, this script acquires a stack of phase images through a
-%       simulated constant flow water phantom. All output files are saved
-%       in the working directory. Many parameters can be edited at the top 
-%       of this script.
+%       This is an editable wrapper script for synthflow_acquire.m, which 
+%       allows the user to adjust various parameters of the flow phantom 
+%       and the simulated scanner, such as the gradient first moments. All 
+%       output files are saved in the working directory.
 %
 %   output:
 %       simulated flow phantom .nii
@@ -17,9 +14,13 @@
 %       gradient first moments .txt files associated with stack
 %       .fig/.png files
 %
-%   see also: synthflow_waterpipe
+%   see also: synthflow_waterpipe, synthflow_acquire
 
 % Tom Roberts (t.roberts@kcl.ac.uk)
+
+
+%% Save Data Directory
+saveDataDir = pwd;
 
 
 %% Flow Phantom Volume
@@ -27,9 +28,6 @@
 
 % volume in px
 PIX.x = 128; PIX.y = 128; PIX.z = 80;
-
-% size of voxel (mm)
-VOX.x = 1.5; VOX.y = 1.5; VOX.z = 3.0;
 
 
 %% Define Peak Pipe Flow Velocities
@@ -48,7 +46,7 @@ PIPE6.vel = -25e-2;
 % slice dimensions
 xl = PIX.x;
 yl = PIX.y;
-zl = 3;     % no. of slices
+zl = 10;     % no. of slices
 
 % rotation
 % NB: non-rotated slice is defined as transverse within scanner, i.e:
@@ -62,8 +60,13 @@ tx_offset = 0;
 ty_offset = 0;
 tz_offset = 0;
 
+
 %% Slice First Moment Properties
 %- For conventional SPGR, only Gsl is nonzero
+% Gro = 0;
+% Gpe = 0;
+% Gsl = 10;
+
 %- For bSSFP, Gro and Gsl are nonzero (see: Nielsen 2009).
 Gro = 9.95;
 Gpe = 0;
@@ -72,7 +75,7 @@ Gsl = -10.98;
 
 %% Scanner Volume
 %- defines the dimensions of the scanner around the phantom
-%- must be bigger than the flow phantom
+%- must be bigger than the flow phantom and allow enough room for stack
 
 %+x = AP
 SCN.a = 0;
