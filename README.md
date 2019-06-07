@@ -18,7 +18,7 @@ __matlab-common__ - submodule containing useful MATLAB scripts
 
 ## Installation
 
-Add everything to MATLAB path. Run synthflow_phantom.m. Edit if desired.
+Add everything to MATLAB path. Run `synthflow_phantom.m`. Edit if desired.
 
 
 ## External Dependencies
