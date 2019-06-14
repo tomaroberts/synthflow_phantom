@@ -203,7 +203,7 @@ axis image;
 ax1.CameraViewAngleMode = 'manual';
 grid on;
 hold on;
-colormap(gray(256)); c = colorbar; c.Label.String = 'Phase [rads]';
+colormap(gray(512)); c = colorbar; c.Label.String = 'Phase [rads]';
 
 xlabel('x-axis (AP)');
 ylabel('y-axis (RL)');
