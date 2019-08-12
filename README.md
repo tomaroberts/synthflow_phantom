@@ -23,7 +23,7 @@ Add everything to MATLAB path. Run `synthflow_phantom.m`. Edit if desired.
 
 ## External Dependencies
 
-None, but rview is recommended for viewing the output .nii files in a world coordinate system.
+None, but rview is recommended for viewing the output .nii files in a world coordinate system. MITK Workbench is also good, but prone to load errors associated with .nii files in certain orientations.
 
 
 ## Overview 
