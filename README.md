@@ -9,8 +9,6 @@ Thomas A. Roberts, Joshua F. P. van Amerom, Alena Uus, David F. A. Lloyd, Milou 
 
 __Nature Communications__. 2020. doi: [https://doi.org/10.1038/s41467-020-18790-1](https://doi.org/10.1038/s41467-020-18790-1)
 
-__bioRxiv__. 2019. doi: [https://doi.org/10.1101/635797](https://doi.org/10.1101/635797) (_pre-print_)  
-
 
 ## Directories
 
