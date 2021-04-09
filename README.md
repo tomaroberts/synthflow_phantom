@@ -5,9 +5,11 @@ synthetic flow phantom for simulating constant velocity water in pipes and acqui
 ## Publications
 
 __Fetal whole-heart 4D flow cine MRI using multiple non-coplanar balanced SSFP stacks__  
-Thomas A. Roberts, Joshua FP van Amerom, Alena Uus, David FA Lloyd, Anthony N. Price, Jacques-Donald Tournier, Laurence H. Jackson, Shaihan J Malik, Milou PM van Poppel, Kuberan Pushparajah, Mary A Rutherford, Reza Rezavi, Maria Deprez, Joseph V. Hajnal. 
+Thomas A. Roberts, Joshua F. P. van Amerom, Alena Uus, David F. A. Lloyd, Milou P. M. van Poppel, Anthony N. Price, Jacques-Donald Tournier, Chloe A. Mohanadass, Laurence H. Jackson, Shaihan J. Malik, Kuberan Pushparajah, Mary A. Rutherford, Reza Razavi, Maria Deprez & Joseph V. Hajnal 
 
+__Nature Communications__. 2020. doi: [https://doi.org/10.1038/s41467-020-18790-1](https://doi.org/10.1038/s41467-020-18790-1)
 __bioRxiv__. 2019. doi: [https://doi.org/10.1101/635797](https://doi.org/10.1101/635797) (_pre-print_)  
+
 
 ## Directories
 
