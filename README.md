@@ -4,7 +4,7 @@ synthetic flow phantom for simulating constant velocity water in pipes and acqui
 
 ## Publications
 
-__Fetal whole-heart 4D flow cine MRI using multiple non-coplanar balanced SSFP stacks__  
+__Fetal whole heart blood flow imaging using 4D cine MRI__  
 Thomas A. Roberts, Joshua F. P. van Amerom, Alena Uus, David F. A. Lloyd, Milou P. M. van Poppel, Anthony N. Price, Jacques-Donald Tournier, Chloe A. Mohanadass, Laurence H. Jackson, Shaihan J. Malik, Kuberan Pushparajah, Mary A. Rutherford, Reza Razavi, Maria Deprez & Joseph V. Hajnal 
 
 __Nature Communications__. 2020. doi: [https://doi.org/10.1038/s41467-020-18790-1](https://doi.org/10.1038/s41467-020-18790-1)
